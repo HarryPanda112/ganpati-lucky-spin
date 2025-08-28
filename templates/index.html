@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Ganpati Lucky Spin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --accent:#ff9800;
+      --accent2:#4caf50;
+      --err:#e53935;
+      --text-light:#fff;
+    }
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      font-family:'Arial',sans-serif;
+      background:#0b0c2c;
+      min-height:100dvh;  /* mobile-friendly viewport */
+      display:flex;
+      justify-content:center;
+      align-items:flex-start; /* start so top has no extra space */
+      color:var(--text-light);
+      position:relative;
+      overflow:hidden;
+    }
+    canvas#bgCanvas{
+      position:absolute; inset:0; width:100%; height:100%; z-index:0;
+    }
+    .wrap{
+      width:95%;
+      max-width:800px;
+      height:100dvh;            /* fill one screen */
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-start;
+      align-items:center;
+      text-align:center;
+      z-index:2;
+      border-radius:20px;
+      background:rgba(0,0,0,0.5);
+      box-shadow:0 8px 32px rgba(0,0,0,0.7);
+      padding:8px 12px 12px;    /* tiny top padding -> “no space” look */
+    }
+    h1{margin:4px 0 6px; font-size:28px;}
+    p{margin:4px 0 12px; color:#ccc; font-size:14px;}
+    .controls{
+      display:flex; flex-direction:column; gap:8px; align-items:center; margin-bottom:10px;
+      width:100%;
+    }
+    input[type="text"]{
+      width:90%; padding:10px 12px;
+      border-radius:10px; border:none; background:#222;
+      color:var(--text-light); font-size:14px;
+    }
+    button{
+      width:90%; padding:10px 12px; border-radius:10px; border:none;
+      background: linear-gradient(90deg,var(--accent),var(--accent2));
+      color:#fff; font-weight:700; font-size:14px; cursor:pointer;
+      box-shadow:0 4px 12px rgba(255,152,0,0.5); transition:0.3s;
+    }
+    button:hover{ transform:scale(1.03); }
+
+    .wheel-wrap{
+      position:relative;
+      width:min(70vw, 360px);
+      aspect-ratio:1/1;
+      margin:10px auto 8px;
+      z-index:3;
+    }
+    canvas#wheel{
+      width:100%; height:100%; border-radius:50%;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5) inset, 0 6px 16px rgba(0,0,0,0.5);
+      transform: rotateX(12deg);
+      display:block;
+    }
+    .pointer{
+      position:absolute; left:50%; top:14px; transform:translateX(-50%);
+      width:0; height:0;
+      border-left:16px solid transparent;
+      border-right:16px solid transparent;
+      border-top:28px solid var(--accent);
+      filter:drop-shadow(0 3px 8px rgba(0,0,0,0.3));
+      z-index:10;
+    }
+    /* Neon Ring around wheel */
+.wheel-ring {
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 330px;   /* Wheel is 300px → Ring slightly bigger */
+  height: 330px;
+  border-radius: 50%;
+  border: 6px solid orange;   /* Neon color same as pointer */
+  box-shadow: 
+        0 0 10px orange,
+        0 0 20px orange,
+        0 0 40px orange,
+        0 0 60px orange,
+        0 0 80px orange;
+  transform: translate(-50%, -50%);
+  pointer-events: none; /* so clicks pass through */
+}
+
+
+
+	
+    .center-logo{
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      width:90px; height:auto; border-radius:50%;
+      z-index:10; pointer-events:none;
+      filter:drop-shadow(0 0 15px var(--accent));
+    }
+    .top-logo{
+      height:90px;             /* bigger top logo */
+      width:auto;
+      display:block;
+      margin:0 auto 6px;       /* minimal gap below */
+      object-fit:contain;
+    }
+    .popup{
+      margin-top:8px; padding:10px; border-radius:10px; font-weight:700;
+      display:none; max-width:90%;
+      font-size:16px; text-align:center; border:2px solid var(--accent);
+      box-shadow:0 0 15px var(--accent); background:rgba(0,0,0,0.7);
+      color:#fff;
+    }
+    .popup.ok{ color: var(--accent); }
+    .popup.err{ color: var(--err); }
+    .popup.win {
+      border-color: #4caf50;
+      box-shadow: 0 0 20px #4caf50, 0 0 30px #4caf50;
+      color: #4caf50;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="wrap">
+    <!-- Bigger top logo with no extra top space -->
+    <img src="static/bal_ganapati.png" alt="Bal Ganapati" class="top-logo">
+
+    <h1 style="text-shadow:0 0 12px #ff9800;">🎉 Ganpati Lucky Spin 🎉</h1>
+    <p>Codes valid until Sep 30, 2025. One-time use only.</p>
+
+    <div class="controls">
+      <input id="name" type="text" placeholder="Your name">
+      <input id="code" type="text" placeholder="Enter code">
+      <button id="redeemBtn">Validate & Spin</button>
+    </div>
+
+    <div class="wheel-wrap">
+  <div class="wheel-ring"></div> <!-- 🔥 Neon Ring -->
+  <div class="pointer"></div>
+  <canvas id="wheel" width="350" height="350"></canvas>
+  <img src="static/logo.png" class="center-logo" alt="Center logo">
+</div>
+
+
+    <div id="popup" class="popup"></div>
+  </div>
+
+  <script>
+    /* ---------- Background cosmic animation (now resizes) ---------- */
+    const bgCanvas = document.getElementById('bgCanvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    let stars = [];
+
+    function sizeBG() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+      // Rebuild stars to fit new size
+      stars = [];
+      for (let i = 0; i < 200; i++) {
+        stars.push({
+          x: Math.random() * bgCanvas.width,
+          y: Math.random() * bgCanvas.height,
+          r: Math.random() * 1.2 + 0.4,
+          alpha: Math.random(),
+          dAlpha: Math.random() * 0.02
+        });
+      }
+    }
+
+    function drawCosmic(){
+      bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+      const grad = bgCtx.createLinearGradient(0,0,bgCanvas.width,bgCanvas.height);
+      grad.addColorStop(0,'#0b0c2c'); grad.addColorStop(1,'#0d0d1f');
+      bgCtx.globalAlpha = 1;
+      bgCtx.fillStyle=grad; bgCtx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
+
+      for (let s of stars){
+        s.alpha+=s.dAlpha; if(s.alpha<0||s.alpha>1) s.dAlpha*=-1;
+        bgCtx.globalAlpha = s.alpha;
+        bgCtx.fillStyle="#fff"; bgCtx.beginPath();
+        bgCtx.arc(s.x,s.y,s.r,0,Math.PI*2); bgCtx.fill();
+      }
+      bgCtx.globalAlpha = 1;
+      requestAnimationFrame(drawCosmic);
+    }
+
+    sizeBG();
+    drawCosmic();
+    window.addEventListener('resize', sizeBG);
+
+    /* ---------------------- Wheel ---------------------- */
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const W=350,H=350,CX=W/2,CY=H/2,R=W/2-10;
+    const textRadius=R*0.75;
+
+    const prizes=["Smart Watch","Bluetooth Speaker","Earphones","AirPods","Analog Watch","Digital Watch"];
+    const colors=["#f44336","#ff9800","#4caf50","#2196f3","#9c27b0","#e91e63"];
+
+    const segments=prizes.length;
+    const anglePer=(2*Math.PI)/segments;
+    let baseRotation=0,spinning=false;
+
+    function drawWheel(rotation){
+      ctx.clearRect(0,0,W,H);
+      ctx.lineWidth=2;
+      for(let i=0;i<segments;i++){
+        const start=rotation+i*anglePer;
+        const end=start+anglePer;
+        ctx.beginPath(); ctx.moveTo(CX,CY); ctx.arc(CX,CY,R,start,end); ctx.closePath();
+        ctx.fillStyle=colors[i%colors.length]; ctx.fill(); ctx.strokeStyle='#000'; ctx.stroke();
+
+        const mid=start+anglePer/2;
+        const tx=CX+Math.cos(mid)*textRadius;
+        const ty=CY+Math.sin(mid)*textRadius;
+        ctx.save(); ctx.translate(tx,ty); ctx.rotate(mid+Math.PI/2);
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.font = 'bold 12px "Josefin Sans", sans-serif'; /* controlled text size */
+        ctx.fillStyle='#fff'; ctx.fillText(prizes[i],0,0);
+        ctx.restore();
+      }
+    }
+    drawWheel(baseRotation);
+
+    // Popup
+    const popup=document.getElementById('popup');
+    function showPopup(msg,type='info'){
+      popup.textContent=msg; popup.className='popup';
+      if(type==='ok') popup.classList.add('ok');
+      else if(type==='err') popup.classList.add('err');
+      else if(type==='win') popup.classList.add('win');
+      popup.style.display='block';
+    }
+
+    // Spin
+    function spinToIndex(index){
+      const fullRotations=Math.floor(Math.random()*2)+3;
+      const sliceCenter=(index+0.5)*anglePer;
+      const desiredRotation=-Math.PI/2 - sliceCenter + fullRotations*2*Math.PI;
+      const start=performance.now(), duration=3800;
+      const initial=baseRotation;
+
+      function animate(now){
+        const t=Math.min((now-start)/duration,1);
+        const eased=1-Math.pow(1-t,3);
+        baseRotation=initial+(desiredRotation-initial)*eased;
+        drawWheel(baseRotation);
+        if(t<1){ requestAnimationFrame(animate); } else { spinning=false; }
+      }
+      spinning=true; requestAnimationFrame(animate);
+    }
+
+    document.getElementById('redeemBtn').addEventListener('click',()=>{
+  if(spinning){ 
+    showPopup('⏳ Wheel spinning — wait','err'); 
+    return; 
+  }
+  const name=document.getElementById('name').value.trim();
+  const code=document.getElementById('code').value.trim();
+  if(!name||!code){ 
+    showPopup('⚠️ Enter your name and code','err'); 
+    return; 
+  }
+
+  const btn = document.getElementById("redeemBtn");
+  btn.disabled = true;  // 🔒 disable button immediately
+
+  fetch("/api/redeem", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, code })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) {
+      showPopup(data.message, "err");
+      btn.disabled = false; // 🔓 re-enable if failed
+      return;
+    }
+    const prize = data.prize;
+    const prizeIndex = prizes.indexOf(prize);
+    showPopup("Spinning... Good luck!", "ok");
+    spinToIndex(prizeIndex);
+
+    setTimeout(() => { 
+      showPopup(`🎉 You won: ${prize}`, "win"); 
+      btn.disabled = false; // 🔓 re-enable after spin ends
+    }, 4000);
+  })
+  .catch(err=>{
+    showPopup("⚠️ Server error", "err");
+    btn.disabled = false; // 🔓 re-enable if error
+  });
+});
+
+  </script>
+</body>
+</html>
