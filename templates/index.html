@@ -158,8 +158,12 @@
   </div>
 
   <!-- 🎶 Sound Effects -->
-  <audio id="winSound" src="https://www.myinstants.com/media/sounds/tada-fanfare.mp3"></audio>
-  <audio id="errorSound" src="https://www.myinstants.com/media/sounds/error.mp3"></audio>
+
+  <audio id="RedeemCodeSound" src="/static/sounds/redeem_code.mp3"></audio>
+  <audio id="wrongCodeSound" src="/static/sounds/wrong_code.mp3"></audio>
+  <audio id="usedCodeSound" src="/static/sounds/used_code.mp3"></audio>
+  <audio id="expiredCodeSound" src="/static/sounds/expired_code.mp3"></audio>
+
 
   <!-- 🎉 Confetti Library -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
@@ -178,14 +182,77 @@
     drawWheel(baseRotation);
 
     const popup=document.getElementById('popup');
-    function playSound(type){ if(type==="win") document.getElementById("winSound").play(); if(type==="err") document.getElementById("errorSound").play(); }
+    function playSound(type){
+  if(type==="win") document.getElementById("RedeemCodeSound").play();
+  if(type==="wrong") document.getElementById("wrongCodeSound").play();
+  if(type==="used") document.getElementById("usedCodeSound").play();
+  if(type==="expired") document.getElementById("expiredCodeSound").play();
+}
     function launchConfetti(){const duration=2000;const end=Date.now()+duration;(function frame(){confetti({particleCount:6,angle:60,spread:55,origin:{x:0}});confetti({particleCount:6,angle:120,spread:55,origin:{x:1}});if(Date.now()<end)requestAnimationFrame(frame);})();}
 
-    function showPopup(msg,type='info'){popup.textContent=msg;popup.className='popup';if(type==='ok')popup.classList.add('ok');else if(type==='err'){popup.classList.add('err');playSound("err");}else if(type==='win'){popup.classList.add('win');playSound("win");launchConfetti();}popup.style.display='block';}
+    function showPopup(msg,type='info'){popup.textContent=msg;popup.className='popup';if(type==='ok')popup.classList.add('ok');else if(type==='err'){popup.classList.add('err');}else if(type==='win'){popup.classList.add('win');playSound("win");launchConfetti();}popup.style.display='block'; setTimeout(()=>{ popup.style.display='none'; }, 3000); }
 
-    function spinToIndex(index){const fullRotations=Math.floor(Math.random()*2)+3;const sliceCenter=(index+0.5)*anglePer;const desiredRotation=-Math.PI/2-sliceCenter+fullRotations*2*Math.PI;const start=performance.now(),duration=3800;const initial=baseRotation;function animate(now){const t=Math.min((now-start)/duration,1);const eased=1-Math.pow(1-t,3);baseRotation=initial+(desiredRotation-initial)*eased;drawWheel(baseRotation);if(t<1){requestAnimationFrame(animate);}else{spinning=false;}}spinning=true;requestAnimationFrame(animate);}
+    function spinToIndex(index, callback){const fullRotations=Math.floor(Math.random()*2)+3;const sliceCenter=(index+0.5)*anglePer;const desiredRotation=-Math.PI/2-sliceCenter+fullRotations*2*Math.PI;const start=performance.now(),duration=2200;const initial=baseRotation;function animate(now){const t=Math.min((now-start)/duration,1);const eased=1-Math.pow(1-t,3);baseRotation=initial+(desiredRotation-initial)*eased;drawWheel(baseRotation);if(t<1){requestAnimationFrame(animate);}else{spinning=false;if(callback) callback();}}spinning=true;requestAnimationFrame(animate);}
 
-    document.getElementById('redeemBtn').addEventListener('click',()=>{if(spinning){showPopup('⏳ Wheel spinning — wait','err');return;}const name=document.getElementById('name').value.trim();const code=document.getElementById('code').value.trim();if(!name||!code){showPopup('⚠️ Enter your name and code','err');return;}const btn=document.getElementById("redeemBtn");btn.disabled=true;fetch("/api/redeem",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,code})}).then(r=>r.json()).then(data=>{if(!data.ok){showPopup(data.message,"err");btn.disabled=false;return;}const prize=data.prize;const prizeIndex=prizes.indexOf(prize);showPopup("Spinning... Good luck!","ok");spinToIndex(prizeIndex);setTimeout(()=>{showPopup(`🎉 You won: ${prize}`,"win");btn.disabled=false;},4000);}).catch(err=>{showPopup("⚠️ Server error","err");btn.disabled=false;});});
+    document.getElementById('redeemBtn').addEventListener('click', () => {
+  if (spinning) {
+    showPopup('⏳ Wheel spinning — wait', 'err');
+    return;
+  }
+
+  const nameInput = document.getElementById('name');
+  const codeInput = document.getElementById('code');
+  const name = nameInput.value.trim();
+  const code = codeInput.value.trim();
+
+  if (!name || !code) {
+    showPopup('⚠️ Enter your name and code', 'err');
+    return;
+  }
+
+  const btn = document.getElementById("redeemBtn");
+  btn.disabled = true;
+  nameInput.disabled = true;
+  codeInput.disabled = true;
+
+  fetch("/api/redeem", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({name, code})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) {
+      // Play sound based on reason
+      if (data.reason === "invalid") playSound("wrong");
+      else if (data.reason === "used") playSound("used");
+      else if (data.reason === "expired") playSound("expired");
+
+      showPopup(data.message, "err");
+      btn.disabled = false;
+      nameInput.disabled = false;
+      codeInput.disabled = false;
+      return;
+    }
+
+    const prize = data.prize;
+    const prizeIndex = prizes.indexOf(prize);
+    showPopup("Spinning... Good luck!", "ok");
+
+    spinToIndex(prizeIndex, () => {
+      showPopup(`🎉 You won: ${prize}`, "win");
+      btn.disabled = false;
+      nameInput.disabled = false;
+      codeInput.disabled = false;
+    });
+  })
+  .catch(err => {
+    showPopup("⚠️ Server error", "err");
+    btn.disabled = false;
+    nameInput.disabled = false;
+    codeInput.disabled = false;
+  });
+});
   </script>
 </body>
 </html>
