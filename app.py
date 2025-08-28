@@ -17,7 +17,11 @@ ATTEMPTS_SHEET_ID = "1ZhLeSN5rOwA1_NIWxisrZ-xMJKab3ihwisvvYxuV7Zw"
 # Authenticate with service account JSON
 scope = ["https://www.googleapis.com/auth/spreadsheets",
          "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_file("service_account.json", scopes=scope)
+import json, os
+
+creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+creds = Credentials.from_service_account_info(json.loads(creds_json), scopes=scope)
+
 client = gspread.authorize(creds)
 
 # Worksheets
